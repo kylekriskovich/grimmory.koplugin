@@ -4,7 +4,6 @@ local T = require("ffi/util").template
 local ButtonDialog = require("ui/widget/buttondialog")
 local Event = require("ui/event")
 local InfoMessage = require("ui/widget/infomessage")
-local ConfirmDialog = require("ui/widget/confirmdialog")
 local MultiInputDialog = require("ui/widget/multiinputdialog")
 local UIManager = require("ui/uimanager")
 local PathChooser = require("ui/widget/pathchooser")
