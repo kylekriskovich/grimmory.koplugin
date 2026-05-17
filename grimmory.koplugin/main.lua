@@ -18,6 +18,7 @@ local GithubAPI = require("grimmory/ota/github_api")
 local GrimmoryLogger = require("grimmory/logger")
 local GrimmoryReadingRecorder = require("grimmory/reading/recorder")
 local GrimmoryReadingSessions = require("grimmory/reading/repository")
+local GrimmoryReadingProgressManager = require("grimmory/reading/progress_manager")
 
 
 local logger = GrimmoryLogger:new()
@@ -78,10 +79,18 @@ function Grimmory:init()
 
     self.book_resolver = GrimmoryBookResolver:new()
 
+    self.reading_progress_manager = GrimmoryReadingProgressManager:new({
+        ui = self.ui,
+        api = self.api,
+        settings = self.settings,
+        reading_sessions = self.reading_sessions,
+    })
+
     self.dialog_manager = GrimmoryDialogManager:new({
         settings = self.settings,
         api = self.api,
         updater = self.updater,
+        reading_progress_manager = self.reading_progress_manager,
     })
 
     self.wifi_manager = GrimmoryWifiManager:new({
@@ -99,6 +108,7 @@ function Grimmory:init()
         reading_sessions = self.reading_sessions,
         api = self.api,
         book_resolver = self.book_resolver,
+        reading_progress_manager = self.reading_progress_manager,
     })
 
     self:onGrimmorySettingsChanged()
@@ -162,7 +172,6 @@ function Grimmory:onPageUpdate(page)
         self.reading_recorder:onPageUpdate()
     end)
 end
-
 
 function Grimmory:onCloseDocument()
     logger:dbg("Document closing")
