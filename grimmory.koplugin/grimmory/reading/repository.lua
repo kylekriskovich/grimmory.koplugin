@@ -270,10 +270,10 @@ function ReadingSessionRepository:getReadingProgress()
                     book.book_path,
                     book.partial_md5,
 
-                    book_session.created_at,
-                    book_session.current_page,
-                    book_session.page_count,
-                    book_session.xpointer
+                    book_event.created_at,
+                    book_event.current_page,
+                    book_event.page_count,
+                    book_event.xpointer
                 FROM (
                     SELECT
                         s.book_id,
@@ -333,10 +333,10 @@ function ReadingSessionRepository:getReadingProgressForBook(book_md5)
                     book.book_path,
                     book.partial_md5,
 
-                    book_session.created_at,
-                    book_session.current_page,
-                    book_session.page_count,
-                    book_session.xpointer
+                    book_event.created_at,
+                    book_event.current_page,
+                    book_event.page_count,
+                    book_event.xpointer
                 FROM (
                     SELECT
                         s.book_id,
