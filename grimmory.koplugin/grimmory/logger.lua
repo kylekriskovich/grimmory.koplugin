@@ -1,11 +1,17 @@
 local logger = require("logger")
-local util = require("util")
 
 local function getPluginPath()
     local source = debug.getinfo(3, "S").source
-    local path, _ = util.splitFileNameSuffix(source)
-    local plugin_path = path:sub(path:find(".koplugin/") + 10)
-    return "grimmory.koplugin/" .. plugin_path
+
+    -- Remove extension suffix
+    local path, _ = source:match("(.*)%.(.*)")
+
+    local plugin_path = path:match("@.*/([^/]+%.koplugin/.+)$")
+    if plugin_path then
+        return plugin_path
+    end
+
+    return path
 end
 
 local NamespacedLogger = {}
