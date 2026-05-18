@@ -42,11 +42,11 @@ local function writeToFD(fd, data)
     local ptr = ffi.cast("uint8_t *", data)
 
     ffi.C.write(fd, ptr, size)
-    ffi.C.write(fd, ffi.cast("uint8_t *", "\0"), 1)
     ffi.C.fdatasync(fd)
 end
 
 local function writeObjectToFD(fd, obj)
+    -- Encode with JSON so we can delineate "entries" with null bytes.
     local ok, str = pcall(json.encode, obj)
 
     if not ok then
@@ -54,7 +54,7 @@ local function writeObjectToFD(fd, obj)
         return false, str
     end
 
-    local write_ok, write_result = pcall(writeToFD, fd, str)
+    local write_ok, write_result = pcall(writeToFD, fd, str .. "\0")
 
     if not write_ok then
         logger:err("Could not write progress state back from subprocess:", write_result)
