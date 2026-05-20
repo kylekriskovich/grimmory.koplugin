@@ -342,7 +342,7 @@ function Grimmory:onGrimmorySync(verbose)
                 self.synchronizer:synchronizeAll(progress_callback)
             end,
             function(progress)
-                if type("progress") ~= "table" then
+                if type(progress) ~= "table" then
                     return
                 end
 
