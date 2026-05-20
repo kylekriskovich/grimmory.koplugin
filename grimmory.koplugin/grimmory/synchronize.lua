@@ -69,6 +69,7 @@ end
 function GrimmorySynchronize:synchronizeSessions(callback)
     if not self.settings:getSyncReadingSessions() then
         logger:info("Reading sessions sync skipped because feature is disabled")
+        return
     end
 
     local since = self.settings:getSynchronizedUntil()
