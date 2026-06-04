@@ -7,6 +7,7 @@ local _ = require("gettext")
 local T = require("ffi/util").template
 
 local Dispatcher = require("dispatcher")
+local FileManager = require("apps/filemanager/filemanager")
 local UIManager = require("ui/uimanager")
 local Event = require("ui/event")
 local ReadCollection = require("readcollection")
@@ -61,6 +62,20 @@ function Grimmory:onDispatcherRegisterActions()
     title = _("Grimmory: Sync in Background"),
     general = true,
   })
+
+  Dispatcher:registerAction("grimmory_sync_open_book_foreground", {
+    category = "none",
+    event = "GrimmorySyncOpenBookForeground",
+    title = _("Grimmory: Sync Open Book Now"),
+    general = true,
+  })
+
+  Dispatcher:registerAction("grimmory_sync_open_book_background", {
+    category = "none",
+    event = "GrimmorySyncOpenBookBackground",
+    title = _("Grimmory: Sync Open Book in Background"),
+    general = true,
+  })
 end
 
 function Grimmory:init()
@@ -108,6 +123,7 @@ function Grimmory:init()
     })
 
     self.menu = GrimmoryMenu:new({
+        ui = self.ui,
         settings = self.settings,
         dialog_manager = self.dialog_manager,
         updater = self.updater,
@@ -126,6 +142,30 @@ function Grimmory:init()
     self:onGrimmorySettingsChanged()
 
     self.ui.menu:registerToMainMenu(self.menu)
+
+    FileManager:addFileDialogButtons(
+        "grimmory_actions",
+        function(file, is_file)
+            if not is_file then
+                return nil
+            end
+
+            return {
+                {
+                    text = _("Sync with Grimmory"),
+                    callback = function()
+                        local file_chooser = FileManager.instance.file_chooser
+
+                        if file_chooser and file_chooser.file_dialog then
+                            UIManager:close(file_chooser.file_dialog)
+                        end
+
+                        self:onGrimmorySync(true, file)
+                    end,
+                },
+            }
+        end
+    )
 
     self:onDispatcherRegisterActions()
 
@@ -153,7 +193,7 @@ function Grimmory:onResume()
     logger:dbg("Device is resuming")
 
     if self.settings:getSyncReadingProgress() then
-        self:syncProgressForOpenBook()
+        self:pullProgressForOpenBook()
     end
 
     self.reading_recorder:onSessionStart()
@@ -173,7 +213,7 @@ function Grimmory:onReaderReady()
     logger:dbg("Document open and ready")
 
     if self.settings:getSyncReadingProgress() then
-        self:syncProgressForOpenBook()
+        self:pullProgressForOpenBook()
     end
 
     self.reading_recorder:onSessionStart()
@@ -245,7 +285,7 @@ function Grimmory:onSchedulePeriodicPush()
     end
 end
 
-function Grimmory:syncProgressForOpenBook()
+function Grimmory:pullProgressForOpenBook()
     if self.ui == nil or self.ui.document == nil or self.ui.document.file == nil then
         return
     end
@@ -298,7 +338,26 @@ function Grimmory:onGrimmorySyncBackground()
     return self:onGrimmorySync(false)
 end
 
-function Grimmory:onGrimmorySync(verbose)
+function Grimmory:onGrimmorySyncOpenBookForeground()
+    return self:onGrimmorySyncOpenBook(true)
+end
+
+function Grimmory:onGrimmorySyncOpenBookBackground()
+    return self:onGrimmorySyncOpenBook(false)
+end
+
+function Grimmory:onGrimmorySyncOpenBook(verbose)
+    if self.ui == nil or self.ui.document == nil or self.ui.document.file == nil then
+        logger:info("No open book, skipping sync")
+        return
+    end
+
+    local book_path = self.ui.document.file
+
+    return self:onGrimmorySync(verbose, book_path)
+end
+
+function Grimmory:onGrimmorySync(verbose, book_path)
     -- Tell everything to flush so we have data available for our sync
     UIManager:broadcastEvent(Event:new("FlushSettings"))
 
@@ -353,7 +412,11 @@ function Grimmory:onGrimmorySync(verbose)
 
         local ok, result = self.executor:run(
             function(progress_callback)
-                self.synchronizer:synchronizeAll(progress_callback)
+                if book_path then
+                    self.synchronizer:synchronizeBook(book_path, progress_callback)
+                else
+                    self.synchronizer:synchronizeAll(progress_callback)
+                end
             end,
             function(progress, terminate)
                 if should_terminate then
