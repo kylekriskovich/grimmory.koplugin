@@ -90,6 +90,16 @@ function GrimmorySynchronize:pushBookSessions(book_id, callback)
                 bookPath = session.book_path,
                 since = session.end_time,
             })
+        elseif session.grimmory_id == nil then
+            logger:err("Session failed recording with error for book: ", book_id, " - ", "No Grimmory ID")
+            callback({
+                state = "session-error",
+                bookPath = session.book_path,
+            })
+
+            -- If an error happens for this session we bail early so
+            -- retries can happen again later
+            break
         else
             logger:dbg(
                 "Recording session",
@@ -505,6 +515,23 @@ function GrimmorySynchronize:associateWithShelves(book_path, shelves)
     end
 end
 
+---@param book_path string
+---@return boolean found
+function GrimmorySynchronize:associateBook(book_path)
+    for book in self.api:getBooks() do
+        if self.doc_metadata:isBook(book_path, book) then
+            local ok = self.repository:upsertBook(book_path, book.id)
+
+            if not ok then
+                logger:err("Failed to write book association:", book_path)
+            end
+
+            return true
+        end
+    end
+
+    return false
+end
 
 ---@param book Book
 ---@return string download_path
@@ -702,10 +729,21 @@ function GrimmorySynchronize:synchronizeBook(book_path, callback)
     end
 
     -- Get book ID
-    local book_ok, book_id = self.repository:upsertBook(book_path)
+    local book_ok, book_id, grimmory_id = self.repository:upsertBook(book_path)
 
     if not book_ok or not book_id then
         error("Could not track book")
+    end
+
+    if grimmory_id == nil then
+        -- Try to find a grimmory ID for this book
+        logger:info("Searching Grimmory for book:", book_path)
+
+        if self:associateBook(book_path) then
+            logger:info("Found book in Grimmory:", book_path)
+        else
+            logger:warn("Unable to locate book in Grimmory:", book_path)
+        end
     end
 
     -- First, tell Grimmory about all of our reading
