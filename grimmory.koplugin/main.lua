@@ -440,6 +440,16 @@ function Grimmory:onGrimmorySync(verbose, book_path, refresh_book)
             return
         end
 
+        -- Run in the foreground, as something with background tasks and
+        -- network management causes Android devices to SIGABRT.
+        if not self:isWifiConnected() then
+            logger:err("Cannot sync without connectivity")
+            self.dialog_manager:toast(
+                _("Failed to Synchronize with Grimmory: No Connectivity")
+            )
+            return
+        end
+
         logger:info("Synchronizing to Grimmory")
 
         local terminated_early = false
@@ -486,11 +496,6 @@ function Grimmory:onGrimmorySync(verbose, book_path, refresh_book)
 
         local ok, result = run(
             function(progress_callback)
-                if not self:isWifiConnected() then
-                    logger:err("Cannot sync without connectivity")
-                    error("Cannot sync without connectivity")
-                end
-
                 if book_path then
                     self.synchronizer:synchronizeBook(book_path, refresh_book, progress_callback)
                 else
