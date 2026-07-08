@@ -1,33 +1,50 @@
 package.path = "grimmory.koplugin/?.lua;" .. package.path
 
-local fake_package_meta = {
-
+local fake_logger = {
+    err = spy.new(function() end),
+    info = spy.new(function() end),
+    dbg = spy.new(function() end),
 }
 
-package.preload["_meta"] = function()
-    return fake_package_meta
-end
-
-package.preload["cache"] = function()
+package.preload["grimmory/logger"] = function()
     return {
         new = function()
-            local cache = {}
-
-            return {
-                get = function(key)
-                    return cache[key]
-                end,
-                insert = function(key, value)
-                    cache[key] = value
-                end
-            }
-        end,
+            return fake_logger
+        end
     }
 end
+
+package.preload["gettext"] = function()
+    return function(text)
+        return text
+    end
+end
+
+package.preload["datastorage"] = function()
+    return {
+
+    }
+end
+
+local fake_package_meta = {}
 
 local GrimmoryPluginMetadata = require("grimmory/plugin_metadata")
 
 describe("GrimmoryPluginMetadata", function()
+    local original_get_meta = nil
+
+    before_each(function()
+        original_get_meta = GrimmoryPluginMetadata.getMeta
+
+        GrimmoryPluginMetadata.getMeta = function()
+            return fake_package_meta
+        end
+    end)
+
+    after_each(function()
+        GrimmoryPluginMetadata.getMeta = original_get_meta
+    end)
+
     describe("hasRepository", function()
         it("returns false when repository field is missing", function()
             assert.are.equal(GrimmoryPluginMetadata:hasRepository(), false)
